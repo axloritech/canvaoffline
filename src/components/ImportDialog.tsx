@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useRef, useState } from "react";
-import { Upload, Wand2, FileJson, Image as ImageIcon, Type, Shapes, Layers, Check, AlertTriangle, Loader2 } from "lucide-react";
+import { Lock, Upload, Wand2, FileJson, Image as ImageIcon, Type, Shapes, Layers, Check, AlertTriangle, Loader2 } from "lucide-react";
 import { Modal, Switch, toast } from "./ui";
 import { analyzeImage, preloadOcr, type AnalyzeStats } from "@/lib/analyze";
 import { importProjectFile } from "./Dialogs";
@@ -8,7 +8,41 @@ import { readFileAsDataURL } from "@/lib/exporter";
 import { renderPage } from "@/lib/exporter";
 import type { Project } from "@/lib/types";
 
-export function ImportDialog({ onClose, onImported }: { onClose: () => void; onImported: (p: Project) => void }) {
+// Private beta gate. The feature is currently limited to the developer; the phrase below is checked client-side (offline).
+const GATE_HASH = "8c84edad7223ce686bf08a75e9fc8dbab6821b7f2f291afb5a118cac64c96e15";
+async function sha256(t: string) { const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t)); return [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, "0")).join(""); }
+
+export function ImportDialog(props: { onClose: () => void; onImported: (p: Project) => void }) {
+  const { onClose } = props;
+  const [unlocked, setUnlocked] = useState<boolean>(() => typeof sessionStorage !== "undefined" && sessionStorage.getItem("rc-import-unlocked") === "1");
+  const [pin, setPin] = useState(""); const [pinErr, setPinErr] = useState(false); const [checking, setChecking] = useState(false);
+  const tryUnlock = async () => {
+    setChecking(true);
+    const ok = (await sha256(pin.trim())) === GATE_HASH;
+    setChecking(false);
+    if (ok) { sessionStorage.setItem("rc-import-unlocked", "1"); setUnlocked(true); } else { setPinErr(true); setTimeout(() => setPinErr(false), 600); }
+  };
+  if (!unlocked) {
+    return (
+      <Modal title={<span style={{ display: "flex", alignItems: "center", gap: 8 }}><Wand2 size={18} color="var(--red)" /> Import & Edit</span>} onClose={onClose}
+        foot={<><button className="btn ghost" onClick={onClose}>Cancel</button><button className="btn primary" disabled={!pin || checking} onClick={tryUnlock}><Lock size={15} /> Unlock</button></>}>
+        <div style={{ textAlign: "center", padding: "8px 0 4px" }}>
+          <div style={{ width: 56, height: 56, borderRadius: 18, background: "var(--red-50)", color: "var(--red)", display: "grid", placeItems: "center", margin: "0 auto 12px" }}><Lock size={26} /></div>
+          <div style={{ fontWeight: 800, fontSize: 16 }}>Private beta</div>
+          <div style={{ color: "var(--muted)", fontSize: 13, margin: "6px auto 16px", maxWidth: 340 }}>Import & Edit converts PNG/JPG designs into editable layers. Access is currently limited — enter the access password to continue.</div>
+          <form onSubmit={(e) => { e.preventDefault(); tryUnlock(); }} style={{ maxWidth: 320, margin: "0 auto" }}>
+            <input className={"input" + (pinErr ? " shake" : "")} type="password" autoFocus placeholder="Access password" value={pin} onChange={(e) => setPin(e.target.value)} style={{ width: "100%", textAlign: "center", fontSize: 15, letterSpacing: 2, borderColor: pinErr ? "var(--red)" : undefined }} />
+            {pinErr && <div style={{ color: "var(--red)", fontSize: 12, marginTop: 6 }}>Incorrect password</div>}
+          </form>
+          <div style={{ marginTop: 22, fontSize: 12, color: "var(--muted)", borderTop: "1px solid var(--line-2)", paddingTop: 12 }}>DM <b>axloritech</b> for password</div>
+        </div>
+      </Modal>
+    );
+  }
+  return <ImportDialogInner {...props} />;
+}
+
+function ImportDialogInner({ onClose, onImported }: { onClose: () => void; onImported: (p: Project) => void }) {
   const [file, setFile] = useState<File | null>(null);
   const [src, setSrc] = useState<string | null>(null);
   const [ocr, setOcr] = useState(true);

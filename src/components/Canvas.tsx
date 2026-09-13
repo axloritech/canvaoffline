@@ -54,6 +54,19 @@ export default function Canvas({ cropId, onCropDone }: { cropId: string | null; 
   }, [project?.id, project?.width, project?.height, stageSize.w, stageSize.h]); // eslint-disable-line
   useEffect(() => { fit(); }, [fit]);
   useEffect(() => { (window as any).__fitCanvas = fit; }, [fit]);
+  // Pan so the selected element(s) sit inside the visible area above a bottom overlay (mobile edit sheet)
+  useEffect(() => {
+    (window as any).__ensureVisible = (bottomInset: number) => {
+      const s = useEditor.getState(); const pg = s.page(); if (!pg || !stageSize.w) return;
+      const els = pg.elements.filter((e) => s.selection.includes(e.id)); if (!els.length) return;
+      const x0 = Math.min(...els.map((e) => e.x)), y0 = Math.min(...els.map((e) => e.y)), x1 = Math.max(...els.map((e) => e.x + e.width)), y1 = Math.max(...els.map((e) => e.y + e.height));
+      const visH = Math.max(120, stageSize.h - bottomInset), visW = stageSize.w;
+      let z = s.zoom; const bw = (x1 - x0) * z, bh = (y1 - y0) * z;
+      if (bw > visW * 0.9 || bh > visH * 0.9) { z = Math.min(z, (visW * 0.9) / (x1 - x0), (visH * 0.9) / (y1 - y0)); s.setZoom(z); }
+      const cx = ((x0 + x1) / 2) * z, cy = ((y0 + y1) / 2) * z;
+      s.setPan(visW / 2 - cx, visH / 2 - cy);
+    };
+  }, [stageSize.w, stageSize.h]);
 
   // space key for panning
   useEffect(() => {

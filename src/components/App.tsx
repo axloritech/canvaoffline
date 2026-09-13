@@ -11,7 +11,7 @@ import Home from "./Home";
 import { TextPanel, ShapesPanel, ElementsPanel, ImagesPanel, BackgroundPanel, PagesPanel } from "./Panels";
 import { PropertiesPanel, LayersPanel } from "./Properties";
 import { ExportDialog, StorageWarning, exportProjectFile, importProjectFile, NewProjectDialog } from "./Dialogs";
-import { Toasts, toast, useIsMobile, Modal } from "./ui";
+import { Toasts, toast, useIsMobile, Modal, CompactCtx } from "./ui";
 import { ImportDialog } from "./ImportDialog";
 import { Wand2 } from "lucide-react";
 import { renderPage } from "@/lib/exporter";
@@ -37,10 +37,20 @@ export default function App() {
   const [menu, setMenu] = useState<DOMRect | null>(null);
   const [cropId, setCropId] = useState<string | null>(null);
   const [mobileSheet, setMobileSheet] = useState<"tool" | "props" | null>(null);
+  const [peek, setPeek] = useState(false);
+  const [openGroup, setOpenGroup] = useState<string | null>(null);
+  useEffect(() => { const h = (e: Event) => setPeek(!!(e as CustomEvent).detail); document.addEventListener("rc-peek", h); return () => document.removeEventListener("rc-peek", h); }, []);
+  // Mobile: when the edit sheet opens (or selection changes while it is open) make sure the selected element is visible above the sheet
+  useEffect(() => {
+    if (!isMobileRef.current || mobileSheet !== "props") return;
+    const t = setTimeout(() => (window as any).__ensureVisible?.(window.innerHeight * 0.42 + 60), 80);
+    return () => clearTimeout(t);
+  }, [mobileSheet, st.selection.join(",")]); // eslint-disable-line
   const [showNote, setShowNote] = useState(false);
   const [installEvt, setInstallEvt] = useState<any>(null);
   useEffect(() => { const bip = (e: any) => { e.preventDefault(); setInstallEvt(e); }; window.addEventListener("beforeinstallprompt", bip); return () => window.removeEventListener("beforeinstallprompt", bip); }, []);
   const isMobile = useIsMobile();
+  const isMobileRef = useRef(isMobile); isMobileRef.current = isMobile;
   const [online, setOnline] = useState(true);
   useEffect(() => { setOnline(navigator.onLine); const on = () => setOnline(true), off = () => setOnline(false); window.addEventListener("online", on); window.addEventListener("offline", off); return () => { window.removeEventListener("online", on); window.removeEventListener("offline", off); }; }, []);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -221,7 +231,7 @@ export default function App() {
             <button className="tool" onClick={() => (window as any).__fitCanvas?.()}><Maximize2 size={20} />Fit</button>
           </nav>
           {mobileSheet && (
-            <div className="mobile-sheet">
+            <div className={"mobile-sheet" + (peek ? " peek" : "") + (mobileSheet === "props" ? " compact" : "")}>
               <div className="grab" onClick={() => setMobileSheet(null)} />
               <button className="ibtn sm" style={{ position: "absolute", right: 8, top: 8 }} onClick={() => setMobileSheet(null)}><X size={16} /></button>
               {mobileSheet === "tool" ? <div className="panel">{toolPanel()}</div> : (
@@ -230,7 +240,9 @@ export default function App() {
                     <button className={"tab" + (rightTab === "props" ? " active" : "")} onClick={() => st.setRightTab("props")}>Properties</button>
                     <button className={"tab" + (rightTab === "layers" ? " active" : "")} onClick={() => st.setRightTab("layers")}>Layers</button>
                   </div>
-                  {rightTab === "props" ? <PropertiesPanel onCrop={(id) => { setCropId(id); setMobileSheet(null); }} /> : <LayersPanel />}
+                  <CompactCtx.Provider value={{ compact: true, open: openGroup, setOpen: setOpenGroup }}>
+                    {rightTab === "props" ? <PropertiesPanel onCrop={(id) => { setCropId(id); setMobileSheet(null); }} /> : <LayersPanel />}
+                  </CompactCtx.Provider>
                 </div>
               )}
             </div>

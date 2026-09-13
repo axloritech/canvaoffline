@@ -36,7 +36,11 @@ export function Slider({ label, value, onChange, min = 0, max = 100, step = 1, f
   return (
     <div className="slider-row">
       <span className="label">{label}</span>
-      <input type="range" className="slider" min={min} max={max} step={step} value={value} onChange={(e) => onChange(parseFloat(e.target.value))} onPointerUp={onCommit} onKeyUp={onCommit} />
+      <input type="range" className="slider" min={min} max={max} step={step} value={value} onChange={(e) => onChange(parseFloat(e.target.value))}
+        onPointerDown={(e) => { const row = e.currentTarget.closest(".slider-row"); row?.classList.add("peeking"); document.dispatchEvent(new CustomEvent("rc-peek", { detail: true })); }}
+        onPointerUp={() => { onCommit?.(); document.querySelectorAll(".slider-row.peeking").forEach((r) => r.classList.remove("peeking")); document.dispatchEvent(new CustomEvent("rc-peek", { detail: false })); }}
+        onPointerCancel={() => { document.querySelectorAll(".slider-row.peeking").forEach((r) => r.classList.remove("peeking")); document.dispatchEvent(new CustomEvent("rc-peek", { detail: false })); }}
+        onKeyUp={onCommit} />
       <span className="val">{format ? format(value) : Math.round(value)}</span>
     </div>
   );
@@ -63,8 +67,21 @@ export function Select<T extends string>({ value, options, onChange }: { value: 
   );
 }
 
-export function PropGroup({ title, right, children }: { title: string; right?: React.ReactNode; children: React.ReactNode }) {
-  return <div className="prop-group"><div className="prop-title">{title}{right}</div>{children}</div>;
+export const CompactCtx = React.createContext<{ compact: boolean; open: string | null; setOpen: (t: string | null) => void }>({ compact: false, open: null, setOpen: () => {} });
+export function PropGroup({ title, right, children, defaultOpen = true }: { title: string; right?: React.ReactNode; children: React.ReactNode; defaultOpen?: boolean }) {
+  const ctx = React.useContext(CompactCtx);
+  const [localOpen, setLocalOpen] = React.useState(defaultOpen);
+  const open = ctx.compact ? ctx.open === title : localOpen;
+  const toggle = () => (ctx.compact ? ctx.setOpen(open ? null : title) : setLocalOpen(!open));
+  return (
+    <div className={"prop-group" + (open ? " open" : " collapsed")}>
+      <div className="prop-title" onClick={(e) => { if ((e.target as HTMLElement).closest(".switch,button,input,select")) return; toggle(); }} role="button" aria-expanded={open}>
+        <span className="prop-title-text"><svg className="chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>{title}</span>
+        <span className="prop-title-right" onClick={(e) => e.stopPropagation()}>{right}</span>
+      </div>
+      {open && <div className="prop-body">{children}</div>}
+    </div>
+  );
 }
 
 /* ---- Toasts ---- */

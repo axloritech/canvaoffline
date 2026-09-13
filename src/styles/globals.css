@@ -192,7 +192,13 @@ input[type="number"] { -moz-appearance: textfield; }
 .right-body { flex: 1; overflow-y: auto; padding: 12px 14px 32px; }
 .prop-group { border-bottom: 1px solid var(--line-2); padding: 10px 0 12px; }
 .prop-group:last-child { border-bottom: 0; }
-.prop-title { font-size: 12px; font-weight: 700; color: var(--ink); margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; }
+.prop-title { font-size: 12px; font-weight: 700; color: var(--ink); margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none; min-height: 24px; }
+.prop-title-text { display: inline-flex; align-items: center; gap: 6px; }
+.prop-title .chev { transition: transform .2s var(--ease); color: var(--muted); }
+.prop-group.open .prop-title .chev { transform: rotate(90deg); }
+.prop-group.collapsed { padding-bottom: 8px; } .prop-group.collapsed .prop-title { margin-bottom: 0; }
+.prop-title-right { display: inline-flex; align-items: center; gap: 6px; }
+.prop-body { animation: fadeIn .18s var(--ease); }
 .row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
 .row:last-child { margin-bottom: 0; }
 .row > * { min-width: 0; }
@@ -352,7 +358,7 @@ input[type="number"] { -moz-appearance: textfield; }
   .panel { display: none; }
   .mobile-nav { display: flex; border-top: 1px solid var(--line); background: #fff; overflow-x: auto; padding: 4px 6px; gap: 2px; z-index: 30; padding-bottom: max(4px, env(safe-area-inset-bottom)); }
   .mobile-nav .tool { width: 60px; height: 50px; flex-shrink: 0; font-size: 10px; gap: 3px; }
-  .mobile-sheet { display: flex; flex-direction: column; position: fixed; left: 0; right: 0; bottom: 60px; max-height: 58vh; background: #fff; border-radius: 16px 16px 0 0; box-shadow: 0 -10px 40px rgba(17,19,24,.18); z-index: 40; animation: sheetIn .25s var(--ease); border-top: 1px solid var(--line); }
+  .mobile-sheet { display: flex; flex-direction: column; position: fixed; left: 0; right: 0; bottom: 60px; max-height: 58vh; transition: opacity .2s, max-height .25s var(--ease), background .2s; background: #fff; border-radius: 16px 16px 0 0; box-shadow: 0 -10px 40px rgba(17,19,24,.18); z-index: 40; animation: sheetIn .25s var(--ease); border-top: 1px solid var(--line); }
   @keyframes sheetIn { from { transform: translateY(30px); opacity: 0 } to { transform: none; opacity: 1 } }
   .mobile-sheet .grab { width: 40px; height: 4px; background: #d1d5db; border-radius: 4px; margin: 8px auto 0; }
   .mobile-sheet .panel, .mobile-sheet .right { display: flex; width: 100%; border: 0; flex: 1; min-height: 0; }
@@ -371,3 +377,21 @@ input[type="number"] { -moz-appearance: textfield; }
 
 .spin { animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg) } }
+
+/* Compact mobile edit sheet: collapsed accordion, smaller height, and a translucent "peek" mode while a slider is dragged */
+@media (max-width: 900px) {
+  .mobile-sheet.compact { max-height: 42vh; }
+  .mobile-sheet.compact .prop-group { padding: 6px 0 8px; }
+  .mobile-sheet.compact .prop-title { font-size: 12.5px; min-height: 30px; margin-bottom: 4px; }
+  .mobile-sheet.compact .prop-group.open .prop-title { margin-bottom: 8px; }
+  .mobile-sheet.peek { background: transparent; backdrop-filter: none; box-shadow: none; border-top-color: transparent; }
+  .mobile-sheet.peek * { visibility: hidden; }
+  .mobile-sheet.peek .slider-row.peeking, .mobile-sheet.peek .slider-row.peeking * { visibility: visible; }
+  .mobile-sheet.peek .slider-row.peeking { background: rgba(255,255,255,.92); border-radius: 10px; padding: 8px 10px; box-shadow: var(--shadow-md); }
+}
+.slider-row.peeking .val { color: var(--red); }
+
+.shake { animation: shake .4s; }
+@keyframes shake { 0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-6px)} 40%,80%{transform:translateX(6px)} }
+.input { height: 42px; border: 1.5px solid var(--line); border-radius: 10px; padding: 0 12px; font: inherit; outline: none; background: #fff; transition: border-color .15s, box-shadow .15s; }
+.input:focus { border-color: var(--red); box-shadow: 0 0 0 3px var(--red-100); }
