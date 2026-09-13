@@ -12,6 +12,8 @@ import { TextPanel, ShapesPanel, ElementsPanel, ImagesPanel, BackgroundPanel, Pa
 import { PropertiesPanel, LayersPanel } from "./Properties";
 import { ExportDialog, StorageWarning, exportProjectFile, importProjectFile, NewProjectDialog } from "./Dialogs";
 import { Toasts, toast, useIsMobile, Modal } from "./ui";
+import { ImportDialog } from "./ImportDialog";
+import { Wand2 } from "lucide-react";
 import { renderPage } from "@/lib/exporter";
 
 const TOOLS: { id: Tool; label: string; icon: React.ElementType }[] = [
@@ -31,6 +33,7 @@ export default function App() {
   const [showWarn, setShowWarn] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [menu, setMenu] = useState<DOMRect | null>(null);
   const [cropId, setCropId] = useState<string | null>(null);
   const [mobileSheet, setMobileSheet] = useState<"tool" | "props" | null>(null);
@@ -245,6 +248,7 @@ export default function App() {
             <hr />
             <button onClick={() => { setMenu(null); saveWithThumb().then(() => toast("Saved on this device")); }}><Save size={16} /> Save now <kbd>Ctrl+S</kbd></button>
             <button onClick={() => { setMenu(null); exportProjectFile(p); toast("Project file downloaded"); }}><FileJson size={16} /> Export project file (.redcanvas)</button>
+            <button onClick={() => { setMenu(null); setShowImport(true); }}><Wand2 size={16} /> Import & Edit (PNG/JPG/.redcanvas)</button>
             <button onClick={() => { setMenu(null); fileRef.current?.click(); }}><Upload size={16} /> Import project file</button>
             <button onClick={() => { setMenu(null); setShowExport(true); }}><Download size={16} /> Export image <kbd>Ctrl+E</kbd></button>
             <hr />
@@ -264,6 +268,7 @@ export default function App() {
       {showWarn && <StorageWarning onClose={() => { setShowWarn(false); setSetting("warnSeen", true); }} />}
       {showNew && <NewProjectDialog onClose={() => setShowNew(false)} onCreate={(n, w, h) => { setShowNew(false); saveWithThumb().then(() => createProject(n, w, h)); }} />}
       {showShortcuts && <ShortcutsDialog onClose={() => setShowShortcuts(false)} />}
+      {showImport && <ImportDialog onClose={() => setShowImport(false)} onImported={async (np) => { setShowImport(false); await saveWithThumb(); await saveProject(np); openProject(np); }} />}
       <Toasts />
     </div>
   );

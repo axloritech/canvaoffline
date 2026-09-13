@@ -140,9 +140,24 @@ function ImageProps({ el, onCrop }: { el: ImageElement; onCrop: (id: string) => 
   const uf = (p: Partial<ImageElement["filters"]>, h = false) => u({ filters: { ...f, ...p, preset: "custom" } }, h);
   const masks: MaskKind[] = ["none", "circle", "rounded", "hexagon", "diamond", "triangle", "star", "heart", "blob"];
   const src = st.project!.assets[el.assetId];
+  const replaceRef = React.useRef<HTMLInputElement>(null);
+  const replace = async (file: File) => {
+    const { readFileAsDataURL, downscaleImage } = await import("@/lib/exporter");
+    const raw = await readFileAsDataURL(file); const { dataUrl, w, h } = await downscaleImage(raw, 3000);
+    const id = st.addAsset(dataUrl);
+    // keep frame position & dimensions; center-crop the new picture to the existing aspect ratio
+    const frameAR = el.width / el.height, imgAR = w / h;
+    let crop = { x: 0, y: 0, w: 1, h: 1 };
+    if (imgAR > frameAR) { const cw = frameAR / imgAR; crop = { x: (1 - cw) / 2, y: 0, w: cw, h: 1 }; } else { const ch = imgAR / frameAR; crop = { x: 0, y: (1 - ch) / 2, w: 1, h: ch }; }
+    u({ assetId: id, naturalW: w, naturalH: h, crop });
+  };
   return (
     <>
+      <input ref={replaceRef} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) replace(f); e.target.value = ""; }} />
       <PropGroup title="Image">
+        <div className="row">
+          <button className="btn primary sm" style={{ flex: 1 }} onClick={() => replaceRef.current?.click()}><Lucide.Replace size={14} /> Replace image</button>
+        </div>
         <div className="row">
           <button className="btn ghost sm" style={{ flex: 1 }} onClick={() => onCrop(el.id)}><Crop size={14} /> Crop</button>
           <button className="btn ghost sm" style={{ flex: 1 }} onClick={() => u({ crop: { x: 0, y: 0, w: 1, h: 1 }, height: el.width * (el.naturalH / el.naturalW) })}><RotateCcw size={14} /> Reset crop</button>

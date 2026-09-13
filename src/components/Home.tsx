@@ -5,6 +5,9 @@ import { listProjects, loadProject, deleteProject, saveProject, estimateStorage,
 import type { ProjectMeta, Project } from "@/lib/types";
 import { uid } from "@/lib/defaults";
 import { NewProjectDialog, importProjectFile, exportProjectFile, StorageWarning } from "./Dialogs";
+import { ImportDialog } from "./ImportDialog";
+import { saveProject as persist } from "@/lib/db";
+import { Wand2 } from "lucide-react";
 import { toast } from "./ui";
 
 const QUICK = [
@@ -20,6 +23,7 @@ export default function Home({ onOpen, onCreate }: { onOpen: (p: Project) => voi
   const [projects, setProjects] = useState<ProjectMeta[]>([]);
   const [showNew, setShowNew] = useState(false);
   const [showWarn, setShowWarn] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [storage, setStorage] = useState<{ usage: number; quota: number } | null>(null);
   const [online, setOnline] = useState(true);
   const [installEvt, setInstallEvt] = useState<any>(null);
@@ -53,7 +57,8 @@ export default function Home({ onOpen, onCreate }: { onOpen: (p: Project) => voi
         {!online && <span className="pill warn"><WifiOff size={13} /> Offline — everything still works</span>}
         {installEvt && <button className="btn ghost sm" onClick={async () => { installEvt.prompt(); setInstallEvt(null); }}><Download size={14} /> Install app</button>}
         <input ref={fileRef} type="file" accept=".redcanvas,.json,application/json" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) importFile(f); e.target.value = ""; }} />
-        <button className="btn ghost sm" onClick={() => fileRef.current?.click()}><Upload size={14} /> Import project</button>
+        <button className="btn ghost sm" onClick={() => setShowImport(true)}><Wand2 size={14} /> Import & Edit</button>
+        <button className="btn ghost sm hide-m" onClick={() => fileRef.current?.click()}><Upload size={14} /> Import project</button>
         <button className="btn primary" onClick={() => setShowNew(true)}><Plus size={16} /> New design</button>
       </div></div>
 
@@ -65,6 +70,7 @@ export default function Home({ onOpen, onCreate }: { onOpen: (p: Project) => voi
 
         <div className="quick">
           <button className="new" onClick={() => setShowNew(true)}><span className="ico"><Plus size={20} /></span><span><b>Custom size</b><small>Any dimensions & presets</small></span></button>
+          <button onClick={() => setShowImport(true)} style={{ borderColor: "var(--red-100)", background: "var(--red-50)" }}><span className="ico" style={{ background: "#fff" }}><Wand2 size={20} /></span><span><b>Import & Edit</b><small>PNG/JPG → editable layers</small></span></button>
           {QUICK.map((q) => <button key={q.label} onClick={() => onCreate(q.label, q.w, q.h)}><span className="ico"><q.icon size={20} /></span><span><b>{q.label}</b><small>{q.sub}</small></span></button>)}
         </div>
 
@@ -101,6 +107,7 @@ export default function Home({ onOpen, onCreate }: { onOpen: (p: Project) => voi
 
       {showNew && <NewProjectDialog onClose={() => setShowNew(false)} onCreate={(n, w, h) => { setShowNew(false); onCreate(n, w, h); }} />}
       {showWarn && <StorageWarning onClose={() => setShowWarn(false)} />}
+      {showImport && <ImportDialog onClose={() => setShowImport(false)} onImported={async (p) => { setShowImport(false); await persist(p); onOpen(p); }} />}
     </div>
   );
 }

@@ -39,3 +39,22 @@ Press `?` inside the editor.
 - Create/edit/export flows on desktop and iPhone viewport (touch drag, pinch zoom, bottom sheets)
 - PNG (2×, all pages), WebP and `.redcanvas` exports; re‑import of the backup into a fresh browser profile
 - Full offline reload + editing with fonts served from the service‑worker cache
+
+
+## Import & Edit (PNG / JPG → editable layers)
+
+`Home → Import & Edit` (also in the editor's ⋯ menu). Everything runs **on the device** – no upload, no backend.
+
+| Input | What you get |
+|---|---|
+| `.redcanvas` project file | 100 % accurate restore of every layer, page, font and asset |
+| Flat PNG / JPG / WebP | Best‑effort reconstruction: background (solid / gradient / photo), rectangles, rounded boxes, circles, cut‑out images, and **editable text** with estimated font size, weight, colour and alignment |
+
+How it works (`src/lib/analyze.ts`):
+1. Background model from the border pixels (solid → gradient → photo fallback).
+2. Local OCR with **Tesseract.js** (LSTM engine, English data bundled under `public/ocr/`, ~11 MB, cached by the service worker on first visit so it works offline). Two passes (normal + inverted) catch light‑on‑dark text; boxes are tightened to real ink and glued icons are split off.
+3. Text pixels are inpainted so they don't ghost behind the new text layers.
+4. Remaining foreground is segmented into connected components and classified as rect / rounded / ellipse / image (cut out with transparent background where possible).
+5. Text colour, stroke weight (→ font weight), size (fit to measured width), line height and alignment are estimated and mapped to the closest bundled font.
+
+Limitations: the exact original font can't be identified; heavily stylised text, very small text and complex photo backgrounds reduce accuracy. Every detected layer is fully editable afterwards; images can be swapped with **Replace image** (keeps position and size).
