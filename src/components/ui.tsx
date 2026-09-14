@@ -115,6 +115,8 @@ export function usePopover() {
   const close = () => setAnchor(null);
   const style = (w = 260, h = 380): React.CSSProperties => {
     if (!anchor) return {};
+    // Touch devices: anchor the popover to the bottom edge above the nav so it never sits on top of the design
+    if (typeof window !== "undefined" && window.matchMedia("(max-width: 900px)").matches) return { left: 8, right: 8, width: "auto", bottom: 64, top: "auto", maxHeight: "45vh", overflowY: "auto" };
     const vw = window.innerWidth, vh = window.innerHeight;
     let left = anchor.left, top = anchor.bottom + 6;
     if (left + w > vw - 8) left = vw - w - 8;

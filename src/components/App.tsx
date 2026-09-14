@@ -166,7 +166,7 @@ export default function App() {
   const importProj = async (f: File) => { try { const np = await importProjectFile(f); await saveProject(np); openProject(np); toast(`Imported "${np.name}"`); } catch (e: any) { toast(e.message || "Import failed", "err"); } };
 
   return (
-    <div className={"app" + (st.fullscreen ? " fullscreen" : "")}>
+    <div className={"app" + (st.fullscreen ? " fullscreen" : "") + (peek ? " peeking" : "")}>
       {/* ---------- Top bar ---------- */}
       <header className="topbar">
         <button className="ibtn" title="Back to projects" onClick={goHome}><ChevronLeft size={20} /></button>

@@ -28,6 +28,8 @@ function hsvaToHex(h: number, s: number, v: number, a = 1) {
 }
 const isHex = (s: string) => /^#([0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(s);
 
+const peekOn = (el: HTMLElement) => { el.classList.add("peeking"); document.dispatchEvent(new CustomEvent("rc-peek", { detail: true })); };
+const peekOff = () => { document.querySelectorAll(".peeking").forEach((r) => r.classList.remove("peeking")); document.dispatchEvent(new CustomEvent("rc-peek", { detail: false })); };
 export function ColorPanel({ value, onChange, onCommit, alpha = true }: { value: string; onChange: (hex: string) => void; onCommit?: () => void; alpha?: boolean }) {
   const safe = isHex(value) ? value : "#000000";
   const [hsva, setHsva] = useState(() => hexToHsva(safe));
@@ -67,11 +69,11 @@ export function ColorPanel({ value, onChange, onCommit, alpha = true }: { value:
   const cur = hsvaToHex(hsva.h, hsva.s, hsva.v);
   return (
     <div>
-      <div ref={satRef} className="cp-sat" style={{ ["--hue" as any]: hueHex }} onPointerDown={onSat}>
+      <div ref={satRef} className="cp-sat" style={{ ["--hue" as any]: hueHex }} onPointerDown={(e) => { peekOn(e.currentTarget); onSat(e); }} onPointerUp={peekOff} onPointerCancel={peekOff}>
         <div className="cp-cursor" style={{ left: `${hsva.s * 100}%`, top: `${(1 - hsva.v) * 100}%`, background: cur }} />
       </div>
-      <input type="range" className="cp-hue" min={0} max={360} value={hsva.h} onChange={(e) => emit({ ...hsva, h: +e.target.value })} onPointerUp={commit} />
-      {alpha && <input type="range" className="cp-alpha" style={{ ["--c" as any]: cur }} min={0} max={1} step={0.01} value={hsva.a} onChange={(e) => emit({ ...hsva, a: +e.target.value })} onPointerUp={commit} />}
+      <input type="range" className="cp-hue" onPointerDown={(e) => peekOn(e.currentTarget)} onPointerCancel={peekOff} min={0} max={360} value={hsva.h} onChange={(e) => emit({ ...hsva, h: +e.target.value })} onPointerUp={() => { peekOff(); commit(); }} />
+      {alpha && <input type="range" className="cp-alpha" onPointerDown={(e) => peekOn(e.currentTarget)} onPointerCancel={peekOff} style={{ ["--c" as any]: cur }} min={0} max={1} step={0.01} value={hsva.a} onChange={(e) => emit({ ...hsva, a: +e.target.value })} onPointerUp={() => { peekOff(); commit(); }} />}
       <div className="row" style={{ marginTop: 10 }}>
         <div className="field" style={{ fontFamily: "ui-monospace, monospace" }}>
           <span className="color-chip" style={{ ["--c" as any]: txt }} />

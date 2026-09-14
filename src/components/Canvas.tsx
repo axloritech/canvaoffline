@@ -1,6 +1,6 @@
 "use client";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { RotateCw, Copy, Trash2, Lock, Unlock, ArrowUp, ArrowDown, Check, X as XIcon, Crop } from "lucide-react";
+import { RotateCw, Copy, Trash2, Lock, Unlock, ArrowUp, ArrowDown, Check, X as XIcon, Crop, Plus, Minus } from "lucide-react";
 import { useEditor, boundsOf } from "@/store/editor";
 import type { DesignElement, TextElement, ImageElement } from "@/lib/types";
 import { backgroundCss, patternSvgDataUrl, noiseDataUrl, rotatePoint, clamp } from "@/lib/render";
@@ -35,6 +35,7 @@ export default function Canvas({ cropId, onCropDone }: { cropId: string | null; 
   const touches = useRef(new Map<number, { x: number; y: number }>());
   const pinch = useRef<{ d: number; zoom: number; cx: number; cy: number } | null>(null);
   const showRulers = st.showRulers;
+  const isTouch = typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
   const rulerOff = showRulers ? 20 : 0;
 
   // observe size
@@ -54,6 +55,11 @@ export default function Canvas({ cropId, onCropDone }: { cropId: string | null; 
   }, [project?.id, project?.width, project?.height, stageSize.w, stageSize.h]); // eslint-disable-line
   useEffect(() => { fit(); }, [fit]);
   useEffect(() => { (window as any).__fitCanvas = fit; }, [fit]);
+  const zoomAt = useCallback((z: number) => {
+    const s = useEditor.getState(); const cx = stageSize.w / 2, cy = stageSize.h / 2;
+    const nz = Math.min(8, Math.max(0.05, z)); const k = nz / s.zoom;
+    s.setPan(cx - (cx - s.panX) * k, cy - (cy - s.panY) * k); s.setZoom(nz);
+  }, [stageSize.w, stageSize.h]);
   // Pan so the selected element(s) sit inside the visible area above a bottom overlay (mobile edit sheet)
   useEffect(() => {
     (window as any).__ensureVisible = (bottomInset: number) => {
@@ -193,6 +199,11 @@ export default function Canvas({ cropId, onCropDone }: { cropId: string | null; 
     }
     if (editingTextId) st.setEditingText(null);
     if (!e.shiftKey) st.clearSelection();
+    if (e.pointerType === "touch") {
+      // On touch: no selection rectangle; dragging on empty space pans the view
+      drag.current = { kind: "pan", startX: e.clientX, startY: e.clientY, origin: new Map(), ids: [], moved: false, pan: { x: panX, y: panY } };
+      stageRef.current!.setPointerCapture(e.pointerId); return;
+    }
     const p = toCanvas(e.clientX, e.clientY);
     drag.current = { kind: "marquee", startX: p.x, startY: p.y, origin: new Map(), ids: [], moved: false };
     stageRef.current!.setPointerCapture(e.pointerId);
@@ -467,9 +478,11 @@ export default function Canvas({ cropId, onCropDone }: { cropId: string | null; 
           ))}
           {cropId && byId(cropId)?.type === "image" && <CropOverlay el={byId(cropId) as ImageElement} zoom={zoom} onDone={onCropDone} />}
         </div>
+        {/* zoom slider – lives at the edge, design stays visible while dragging */}
+        {!cropId && <ZoomSlider zoom={zoom} onChange={(z) => zoomAt(z)} />}
         {/* context bar */}
         {selBounds && !editingTextId && !cropId && (
-          <div className="ctx-bar" style={{ left: clamp(ctxLeft, 120, Math.max(120, stageSize.w - 120)), top: clamp(ctxTop, 8, stageSize.h - 60), transform: "translateX(-50%)" }} onPointerDown={(e) => e.stopPropagation()}>
+          <div className={"ctx-bar" + (isTouch ? " docked" : "")} style={isTouch ? undefined : { left: clamp(ctxLeft, 120, Math.max(120, stageSize.w - 120)), top: clamp(ctxTop, 8, stageSize.h - 60), transform: "translateX(-50%)" }} onPointerDown={(e) => e.stopPropagation()}>
             {single?.type === "image" && <button className="ibtn sm" title="Crop" onClick={() => (window as any).__startCrop?.(single.id)}><Crop size={15} /></button>}
             <button className="ibtn sm" title="Duplicate (Ctrl+D)" onClick={st.duplicateSelected}><Copy size={15} /></button>
             {single && <button className="ibtn sm" title="Bring forward" onClick={() => st.reorder(single.id, "up")}><ArrowUp size={15} /></button>}
@@ -579,6 +592,30 @@ function CropOverlay({ el, zoom, onDone }: { el: ImageElement; zoom: number; onD
         <button className="btn sm ghost" onClick={onDone}><XIcon size={14} /> Cancel</button>
         <button className="btn sm primary" onClick={apply}><Check size={14} /> Apply</button>
       </div>
+    </div>
+  );
+}
+
+
+/* Vertical zoom slider docked to the stage edge. Log scale 5% – 800%. */
+function ZoomSlider({ zoom, onChange }: { zoom: number; onChange: (z: number) => void }) {
+  const min = Math.log(0.05), max = Math.log(8);
+  const v = (Math.log(zoom) - min) / (max - min);
+  const ref = useRef<HTMLDivElement>(null);
+  const [active, setActive] = useState(false);
+  const set = (clientY: number) => { const r = ref.current!.getBoundingClientRect(); const t = 1 - Math.min(1, Math.max(0, (clientY - r.top) / r.height)); onChange(Math.exp(min + t * (max - min))); };
+  return (
+    <div className={"zoom-slider" + (active ? " active" : "")} onPointerDown={(e) => e.stopPropagation()}>
+      <button className="ibtn sm" onClick={() => onChange(zoom * 1.2)} title="Zoom in"><Plus size={14} /></button>
+      <div ref={ref} className="track" onPointerDown={(e) => { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); setActive(true); document.dispatchEvent(new CustomEvent("rc-peek", { detail: true })); set(e.clientY); }}
+        onPointerMove={(e) => { if (active) set(e.clientY); }}
+        onPointerUp={() => { setActive(false); document.dispatchEvent(new CustomEvent("rc-peek", { detail: false })); }}
+        onPointerCancel={() => { setActive(false); document.dispatchEvent(new CustomEvent("rc-peek", { detail: false })); }}>
+        <div className="fill" style={{ height: `${v * 100}%` }} />
+        <div className="knob" style={{ bottom: `calc(${v * 100}% - 9px)` }} />
+      </div>
+      <button className="ibtn sm" onClick={() => onChange(zoom / 1.2)} title="Zoom out"><Minus size={14} /></button>
+      <span className="pct" onClick={() => (window as any).__fitCanvas?.()} title="Fit to screen">{Math.round(zoom * 100)}%</span>
     </div>
   );
 }
