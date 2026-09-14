@@ -4,6 +4,7 @@ import "@/styles/globals.css";
 import { PWA } from "@/components/PWA";
 
 export const metadata: Metadata = {
+  verification: { google: "FBg_7gsdbuB_IvALObhs0pNpHArJqMK1KGYudoO_GTo" },
   title: "RedCanvas Studio — Offline Design Editor",
   description: "Professional offline-first graphic design editor. Create social posts, flyers, posters, thumbnails, logos and more — no internet required.",
   manifest: "/manifest.webmanifest",
