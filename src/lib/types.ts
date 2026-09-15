@@ -19,6 +19,20 @@ export interface Fill {
   gradient: Gradient;
 }
 
+export type TextureKind = "film-grain" | "fine-grain" | "heavy-grain" | "vintage-grain" | "analog-film" | "film-dust" | "film-scratches" | "paper-grain" | "paper-texture" | "canvas-texture" | "noise" | "color-noise" | "digital-noise" | "halftone" | "print-dots" | "retro-print" | "newspaper" | "risograph";
+export interface Texture {
+  enabled: boolean;
+  kind: TextureKind;
+  intensity: number;   // 0..100 contrast / density of the effect
+  size: number;        // 0..100 grain / dot size
+  scale: number;       // 25..400 % tile scale
+  opacity: number;     // 0..100
+  blend: "overlay" | "soft-light" | "multiply" | "screen" | "normal" | "hard-light" | "difference" | "luminosity" | "color-burn" | "color-dodge";
+  randomness: number;  // 0..100
+  color: string;
+  seed: number;
+}
+
 export interface BaseElement {
   id: string;
   type: ElementType;
@@ -32,6 +46,7 @@ export interface BaseElement {
   shadow: Shadow;
   glow: Glow;
   groupId?: string;
+  texture?: Texture;
 }
 
 export interface TextElement extends BaseElement {
@@ -111,6 +126,7 @@ export interface Background {
   pattern: "none" | "dots" | "grid" | "lines" | "diagonal";
   patternColor: string;
   patternOpacity: number;
+  texture?: Texture;
 }
 
 export interface Page {

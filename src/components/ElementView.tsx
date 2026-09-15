@@ -1,4 +1,5 @@
 "use client";
+import { textureStyle } from "@/lib/texture";
 import React, { memo } from "react";
 import * as Lucide from "lucide-react";
 import type { DesignElement, TextElement, ImageElement, ShapeElement, LineElement, IconElement } from "@/lib/types";
@@ -47,6 +48,7 @@ const ImageView = memo(function ImageView({ el, src }: { el: ImageElement; src?:
         <foreignObject width={W} height={H} clipPath={`url(#${clipId})`}>
           <div style={{ width: W, height: H, position: "relative", overflow: "hidden" }}>
             {src ? <img src={src} alt="" style={imgStyle} draggable={false} /> : <div style={{ width: "100%", height: "100%", background: "#e5e7eb" }} />}
+            {el.texture?.enabled && <div style={textureStyle(el.texture)} />}
           </div>
         </foreignObject>
         {strokes}
@@ -59,6 +61,28 @@ const ShapeView = memo(function ShapeView({ el }: { el: ShapeElement }) {
   const gid = `g-${el.id}`;
   const d = shapePath(el.shape, el.width, el.height, el.radius);
   const g = el.fill.gradient;
+  if (el.texture?.enabled) {
+    const cid = `c-${el.id}`;
+    return (
+      <div style={{ width: "100%", height: "100%", position: "relative", filter: dropShadowFilter(el.shadow, el.glow) || undefined }}>
+        <svg width={el.width} height={el.height} style={{ display: "block", overflow: "visible" }}>
+          {el.fill.type === "gradient" && (
+            <defs>
+              {g.type === "linear"
+                ? <linearGradient id={gid} gradientTransform={`rotate(${g.angle - 90} .5 .5)`}>{g.stops.map((s, i) => <stop key={i} offset={`${s.pos}%`} stopColor={s.color} />)}</linearGradient>
+                : <radialGradient id={gid}>{g.stops.map((s, i) => <stop key={i} offset={`${s.pos}%`} stopColor={s.color} />)}</radialGradient>}
+            </defs>
+          )}
+          <defs><clipPath id={cid}><path d={d} fillRule="evenodd" /></clipPath></defs>
+          <path d={d} fill={el.fill.type === "gradient" ? `url(#${gid})` : el.fill.color} fillRule="evenodd" />
+          <foreignObject width={el.width} height={el.height} clipPath={`url(#${cid})`}>
+            <div style={{ width: el.width, height: el.height, position: "relative" }}><div style={textureStyle(el.texture)} /></div>
+          </foreignObject>
+          <path d={d} fill="none" stroke={el.stroke.enabled ? el.stroke.color : "none"} strokeWidth={el.stroke.enabled ? el.stroke.width : 0} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+        </svg>
+      </div>
+    );
+  }
   return (
     <svg width={el.width} height={el.height} style={{ display: "block", overflow: "visible", filter: dropShadowFilter(el.shadow, el.glow) || undefined }}>
       {el.fill.type === "gradient" && (

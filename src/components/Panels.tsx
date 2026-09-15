@@ -9,6 +9,7 @@ import { shapePath, gradientCss } from "@/lib/render";
 import { readFileAsDataURL, downscaleImage } from "@/lib/exporter";
 import { ColorPanel, GradientEditor } from "./ColorPicker";
 import { Slider, Seg, toast, Select } from "./ui";
+import { TextureProps } from "./TextureProps";
 import type { ShapeKind, TextElement } from "@/lib/types";
 
 function centerPos(w: number, h: number) {
@@ -238,6 +239,7 @@ export function BackgroundPanel() {
         </>}
         <div className="section-title">Texture</div>
         <Slider label="Grain / noise" value={bg.noise} onChange={(v) => set({ noise: v })} format={(v) => `${v}%`} />
+        <TextureProps value={bg.texture} onChange={(t) => set({ texture: t })} embedded />
         <div className="row" style={{ marginTop: 8 }}><span className="label w">Pattern</span><Select value={bg.pattern} options={[{ value: "none", label: "None" }, { value: "dots", label: "Dots" }, { value: "grid", label: "Grid" }, { value: "lines", label: "Lines" }, { value: "diagonal", label: "Diagonal" }]} onChange={(p) => set({ pattern: p })} /></div>
         {bg.pattern !== "none" && <>
           <Slider label="Pattern opacity" value={bg.patternOpacity * 100} onChange={(v) => set({ patternOpacity: v / 100 })} format={(v) => `${Math.round(v)}%`} />

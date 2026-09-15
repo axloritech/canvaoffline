@@ -426,3 +426,16 @@ body:has(.app.peeking) .popover .slider-row.peeking { background: rgba(255,255,2
   .popover .grid-6 > * { aspect-ratio: 1; height: auto !important; border-radius: 6px !important; }
   body:has(.app.peeking) .mobile-sheet { visibility: hidden; }
 }
+
+/* Crawlable content for search engines; hidden from users once the app mounts */
+.seo { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
+
+/* ---- Texture picker ---- */
+.tex-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.tex-group-title { grid-column: 1 / -1; font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-top: 4px; }
+.tex-tile { border: 1.5px solid var(--line); border-radius: 10px; padding: 4px; background: #fff; cursor: pointer; display: flex; flex-direction: column; gap: 4px; align-items: stretch; transition: border-color .15s, transform .15s; }
+.tex-tile:hover { border-color: var(--red-200); transform: translateY(-1px); }
+.tex-tile.active { border-color: var(--red); box-shadow: 0 0 0 2px var(--red-100); }
+.tex-prev { position: relative; display: block; height: 40px; border-radius: 6px; overflow: hidden; background: linear-gradient(135deg, #e11d2e 0%, #f97316 40%, #cbd5e1 100%); }
+.tex-name { font-size: 10px; font-weight: 600; color: var(--ink-2); text-align: center; line-height: 1.15; }
+@media (max-width: 900px) { .tex-grid { grid-template-columns: repeat(4, 1fr); } .tex-prev { height: 34px; } }

@@ -1,4 +1,5 @@
 import type { DesignElement, Page, Project, TextElement, ImageElement, ShapeElement, LineElement, IconElement, Fill, Shadow, Glow } from "./types";
+import { drawTexture } from "./texture";
 import { shapePath, maskSvgPath, hexToRgba, imageFilterCss, patternSvgDataUrl, noiseDataUrl, gradientCss } from "./render";
 
 const imgCache = new Map<string, HTMLImageElement>();
@@ -128,6 +129,7 @@ async function drawImage(ctx: CanvasRenderingContext2D, el: ImageElement, s: num
   const sx = el.crop.x * img.naturalWidth, sy = el.crop.y * img.naturalHeight, sw = el.crop.w * img.naturalWidth, sh = el.crop.h * img.naturalHeight;
   ctx.drawImage(img, sx, sy, sw, sh, 0, 0, W, H);
   ctx.filter = "none";
+  if (el.texture?.enabled) drawTexture(ctx, el.texture, W, H, s);
   if (el.frame.enabled) {
     ctx.lineWidth = el.frame.width * s * 2; ctx.strokeStyle = el.frame.color; ctx.stroke(path);
   }
@@ -144,6 +146,7 @@ function drawShape(ctx: CanvasRenderingContext2D, el: ShapeElement, s: number) {
   ctx.fillStyle = makeGradient(ctx, el.fill, W, H);
   ctx.fill(p, "evenodd");
   clearShadow(ctx);
+  if (el.texture?.enabled) drawTexture(ctx, el.texture, W, H, s, p);
   if (el.stroke.enabled && el.stroke.width > 0) { ctx.lineWidth = el.stroke.width * s; ctx.strokeStyle = el.stroke.color; ctx.lineJoin = "round"; ctx.stroke(p); }
 }
 
@@ -174,7 +177,7 @@ async function drawIcon(ctx: CanvasRenderingContext2D, el: IconElement, s: numbe
   clearShadow(ctx);
 }
 
-async function drawBackground(ctx: CanvasRenderingContext2D, page: Page, W: number, H: number, assets: Record<string, string>, transparent: boolean) {
+async function drawBackground(ctx: CanvasRenderingContext2D, page: Page, W: number, H: number, assets: Record<string, string>, transparent: boolean, scale = 1) {
   const bg = page.background;
   if (transparent && bg.type === "solid" && bg.color === "transparent") return;
   if (bg.type === "gradient") {
@@ -197,6 +200,7 @@ async function drawBackground(ctx: CanvasRenderingContext2D, page: Page, W: numb
       if (pat) { ctx.fillStyle = pat; ctx.fillRect(0, 0, W, H); }
     }
   }
+  if (bg.texture?.enabled) drawTexture(ctx, bg.texture, W, H, scale);
   if (bg.noise > 0) {
     const img = await loadImage(noiseDataUrl());
     const pat = ctx.createPattern(img, "repeat");
@@ -211,8 +215,8 @@ export async function renderPage(project: Project, page: Page, scale = 1, transp
   const canvas = document.createElement("canvas");
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext("2d")!;
-  if (!transparent) await drawBackground(ctx, page, W, H, project.assets, false);
-  else if (page.background.type !== "solid" || page.background.color !== "transparent") await drawBackground(ctx, page, W, H, project.assets, true);
+  if (!transparent) await drawBackground(ctx, page, W, H, project.assets, false, scale);
+  else if (page.background.type !== "solid" || page.background.color !== "transparent") await drawBackground(ctx, page, W, H, project.assets, true, scale);
 
   for (const el of page.elements) {
     if (el.hidden || el.type === "group") continue;

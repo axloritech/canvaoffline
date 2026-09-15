@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { RotateCw, Copy, Trash2, Lock, Unlock, ArrowUp, ArrowDown, Check, X as XIcon, Crop, Plus, Minus } from "lucide-react";
 import { useEditor, boundsOf } from "@/store/editor";
 import type { DesignElement, TextElement, ImageElement } from "@/lib/types";
+import { textureStyle } from "@/lib/texture";
 import { backgroundCss, patternSvgDataUrl, noiseDataUrl, rotatePoint, clamp } from "@/lib/render";
 import { ElementContent, elementTransform, textStyle } from "./ElementView";
 import { renderPage } from "@/lib/exporter";
@@ -250,7 +251,8 @@ export default function Canvas({ cropId, onCropDone }: { cropId: string | null; 
       // transform delta into element local space
       const r = (-rot * Math.PI) / 180;
       let ldx = dx0 * Math.cos(r) - dy0 * Math.sin(r), ldy = dx0 * Math.sin(r) + dy0 * Math.cos(r);
-      const keepRatio = e.shiftKey || (single && (single.type === "image" || single.type === "icon" || (single.type === "text" && h.length === 2))) || d.ids.length > 1;
+      // Corner handles always scale proportionally (hold Alt to stretch freely); edge handles stretch one axis
+      const keepRatio = h.length === 2 ? !e.altKey : e.shiftKey || d.ids.length > 1;
       let nx = b.x, ny = b.y, nw = b.width, nh = b.height;
       if (h.includes("e")) nw = b.width + ldx;
       if (h.includes("w")) { nw = b.width - ldx; nx = b.x + ldx; }
@@ -445,6 +447,7 @@ export default function Canvas({ cropId, onCropDone }: { cropId: string | null; 
             <div style={{ position: "absolute", inset: 0, ...backgroundCss(bg, project.assets) }} />
             {pattern && <div style={{ position: "absolute", inset: 0, backgroundImage: pattern }} />}
             {bg.noise > 0 && <div style={{ position: "absolute", inset: 0, backgroundImage: `url(${noiseDataUrl()})`, opacity: bg.noise / 100, mixBlendMode: "overlay" }} />}
+            {bg.texture?.enabled && <div style={textureStyle(bg.texture)} />}
             {st.showGrid && <div style={{ position: "absolute", inset: 0, pointerEvents: "none", backgroundSize: `${st.gridSize}px ${st.gridSize}px`, backgroundImage: "linear-gradient(to right, rgba(0,0,0,.08) 1px, transparent 1px), linear-gradient(to bottom, rgba(0,0,0,.08) 1px, transparent 1px)" }} />}
             {els.map(renderEl)}
           </div>

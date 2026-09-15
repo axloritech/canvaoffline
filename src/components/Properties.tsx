@@ -9,6 +9,7 @@ import type { DesignElement, TextElement, ImageElement, ShapeElement, LineElemen
 import { shapePath, maskSvgPath, imageFilterCss } from "@/lib/render";
 import { ColorButton, FillButton } from "./ColorPicker";
 import { NumField, Slider, Switch, Seg, Select, PropGroup, Stepper } from "./ui";
+import { TextureProps } from "./TextureProps";
 
 export function PropertiesPanel({ onCrop }: { onCrop: (id: string) => void }) {
   const st = useEditor();
@@ -58,6 +59,7 @@ export function PropertiesPanel({ onCrop }: { onCrop: (id: string) => void }) {
         <PropGroup title="Position & size">
           <div className="row two"><NumField label="X" value={single.x} onChange={(v) => moveWithChildren(single, v - single.x, 0)} /><NumField label="Y" value={single.y} onChange={(v) => moveWithChildren(single, 0, v - single.y)} /></div>
           <div className="row two"><NumField label="W" value={single.width} min={1} onChange={(v) => upd({ width: v })} /><NumField label="H" value={single.height} min={1} onChange={(v) => upd({ height: v })} /></div>
+          <ScaleControl el={single} />
           <div className="row two">
             <NumField label="↻" value={single.rotation} suffix="°" onChange={(v) => upd({ rotation: v })} />
             <div className="seg" style={{ flex: "0 0 auto", width: 100 }}>
@@ -127,6 +129,7 @@ function TextProps({ el }: { el: TextElement }) {
       <PropGroup title="Color">
         <div className="row"><FillButton value={el.fill} onChange={(f) => u({ fill: f }, false)} onCommit={() => { st.commit(); st.save(); }} /></div>
       </PropGroup>
+      <TextureProps value={el.texture} onChange={(t, h) => u({ texture: t } as any, h)} />
       <StrokeProps stroke={el.stroke} onChange={(s, h) => u({ stroke: s }, h)} max={20} />
     </>
   );
@@ -197,6 +200,7 @@ function ImageProps({ el, onCrop }: { el: ImageElement; onCrop: (id: string) => 
         <Slider label="Sepia" value={f.sepia} min={0} max={100} onChange={(v) => uf({ sepia: v })} onCommit={() => st.commit()} />
         <Slider label="Invert" value={f.invert} min={0} max={100} onChange={(v) => uf({ invert: v })} onCommit={() => st.commit()} />
       </PropGroup>
+      <TextureProps value={el.texture} onChange={(t, h) => u({ texture: t } as any, h)} />
       <StrokeProps stroke={el.stroke} onChange={(s, h) => u({ stroke: s }, h)} max={60} title="Border" />
     </>
   );
@@ -213,6 +217,7 @@ function ShapeProps({ el }: { el: ShapeElement }) {
         {(el.shape === "rounded" || el.shape === "rect") && <Slider label="Corners" value={el.radius} min={0} max={Math.min(el.width, el.height) / 2} onChange={(v) => u({ radius: v, shape: v > 0 ? "rounded" : "rect" }, false)} onCommit={() => st.commit()} />}
       </PropGroup>
       <StrokeProps stroke={el.stroke} onChange={(s, h) => u({ stroke: s }, h)} max={80} title="Border" />
+      <TextureProps value={el.texture} onChange={(t, h) => u({ texture: t } as any, h)} />
     </>
   );
 }
@@ -356,6 +361,35 @@ export function LayersPanel() {
           </span>
         </div>
       ))}
+    </div>
+  );
+}
+
+
+/* Proportional scale: scales width, height (and font size / radius / stroke for the element) around its centre */
+function ScaleControl({ el }: { el: DesignElement }) {
+  const st = useEditor();
+  const base = React.useRef<{ w: number; h: number; x: number; y: number; fs?: number; radius?: number; th?: number } | null>(null);
+  const [pct, setPct] = useState(100);
+  React.useEffect(() => { base.current = null; setPct(100); }, [el.id]);
+  const apply = (p: number) => {
+    if (!base.current) base.current = { w: el.width, h: el.height, x: el.x, y: el.y, fs: (el as any).fontSize, radius: (el as any).radius, th: (el as any).thickness };
+    const b = base.current, k = p / 100;
+    const w = Math.max(4, b.w * k), h = Math.max(4, b.h * k);
+    const patch: any = { width: w, height: h, x: b.x + (b.w - w) / 2, y: b.y + (b.h - h) / 2 };
+    if (el.type === "text" && b.fs) patch.fontSize = Math.max(4, b.fs * k);
+    if ((el.type === "shape" || el.type === "image") && typeof b.radius === "number") patch.radius = b.radius * k;
+    if (el.type === "line" && b.th) patch.thickness = Math.max(1, b.th * k);
+    st.updateElement(el.id, patch, false);
+    setPct(p);
+  };
+  return (
+    <div className="slider-row" title="Scale the whole element proportionally">
+      <span className="label">Scale</span>
+      <input type="range" className="slider" min={10} max={400} step={1} value={pct} onChange={(e) => apply(parseFloat(e.target.value))}
+        onPointerDown={(e) => { (e.currentTarget.closest(".slider-row") as HTMLElement)?.classList.add("peeking"); document.dispatchEvent(new CustomEvent("rc-peek", { detail: true })); }}
+        onPointerUp={() => { st.commit(); st.save(); base.current = null; setPct(100); document.querySelectorAll(".peeking").forEach((r) => r.classList.remove("peeking")); document.dispatchEvent(new CustomEvent("rc-peek", { detail: false })); }} />
+      <span className="val">{pct}%</span>
     </div>
   );
 }
